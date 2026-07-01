@@ -1,0 +1,16 @@
+{
+  "name": "medtrack-cron",
+  "version": "1.0.0",
+  "description": "MedTrack medicine reminder cron service",
+  "main": "reminderJob.js",
+  "type": "module",
+  "scripts": {
+    "start": "node reminderJob.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-appwrite": "^12.0.0",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.13"
+  }
+}

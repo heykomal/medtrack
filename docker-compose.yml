@@ -10,6 +10,11 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   frontend:
     build:
@@ -22,9 +27,15 @@ services:
       - backend
     restart: unless-stopped
 
-volumes:
-  appwrite-uploads:
-  appwrite-cache:
-  appwrite-config:
-  appwrite-db:
-  appwrite-redis-data:
+  cron:
+    build:
+      context: ./cron
+      dockerfile: Dockerfile
+    container_name: medtrack-cron
+    env_file:
+      - .env
+    depends_on:
+      - backend
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-Asia/Kolkata}
