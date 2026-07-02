@@ -1,10 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import { databases, DB_ID, COLLECTIONS } from './src/config/appwrite.js';
-import diseaseRoutes from './src/routes/disease.routes.js';
+import authRoutes         from './src/routes/auth.routes.js';
+import adminRoutes        from './src/routes/admin.routes.js';
+import diseaseRoutes      from './src/routes/disease.routes.js';
 import prescriptionRoutes from './src/routes/prescription.routes.js';
-import medicineRoutes from './src/routes/medicine.routes.js';
-import doseLogRoutes from './src/routes/dose-log.routes.js';
+import medicineRoutes     from './src/routes/medicine.routes.js';
+import doseLogRoutes      from './src/routes/dose-log.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -16,6 +18,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'medtrack-backend', timestamp: new Date().toISOString() });
 });
 
+
 app.get('/test-appwrite', async (req, res) => {
   try {
     const result = await databases.listDocuments(DB_ID, COLLECTIONS.USERS);
@@ -25,6 +28,8 @@ app.get('/test-appwrite', async (req, res) => {
   }
 });
 
+app.use('/api/auth',     authRoutes);
+app.use('/api/admin',   adminRoutes);
 app.use('/api/diseases', diseaseRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/medicines', medicineRoutes);

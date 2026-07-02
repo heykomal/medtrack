@@ -4,6 +4,10 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const api = axios.create({ baseURL: BASE_URL });
 
+// ── Auth ──────────────────────────────────────────────────────────────────────
+export const authRegister = (email, password) => api.post('/api/auth/register', { email, password }).then(r => r.data);
+export const authLogin    = (email, password) => api.post('/api/auth/login',    { email, password }).then(r => r.data);
+
 // ── Diseases ──────────────────────────────────────────────────────────────────
 export const getDiseases = () => api.get('/api/diseases').then(r => r.data);
 export const getDisease = (id) => api.get(`/api/diseases/${id}`).then(r => r.data);

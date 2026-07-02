@@ -4,12 +4,12 @@ import {
 } from '../services/api.js';
 import { useToast } from '../components/Toast.jsx';
 import Modal from '../components/Modal.jsx';
-import { IconPlus, IconEdit, IconTrash, IconClipboard, IconCalendar, IconUser } from '../components/Icons.jsx';
+import { IconPlus, IconEdit, IconTrash, IconClipboard, IconCalendar, IconUser, IconVirus } from '../components/Icons.jsx';
 
 const EMPTY = { diseaseid: '', patientname: '', doctornote: '', startdate: '', enddate: '', active: true };
 
 function fmtDate(raw) {
-  if (!raw) return '—';
+  if (!raw) return null;
   const d = new Date(raw);
   return isNaN(d) ? raw : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
@@ -41,15 +41,24 @@ export default function PrescriptionManager() {
 
   function diseaseLabel(id) {
     const d = diseases.find(d => d.$id === id);
-    return d ? `${d.diseasename}` : '—';
+    return d ? d.diseasename : '—';
+  }
+  function diseasePatient(id) {
+    const d = diseases.find(d => d.$id === id);
+    return d ? d.patientname : '';
   }
 
   function openAdd()  { setEditing(null); setForm(EMPTY); setShowModal(true); }
   function openEdit(p) {
     setEditing(p);
-    setForm({ diseaseid: p.diseaseid, patientname: p.patientname, doctornote: p.doctornote || '',
-              startdate: p.startdate ? p.startdate.split('T')[0] : '',
-              enddate:   p.enddate   ? p.enddate.split('T')[0]   : '', active: p.active });
+    setForm({
+      diseaseid:   p.diseaseid,
+      patientname: p.patientname,
+      doctornote:  p.doctornote || '',
+      startdate:   p.startdate ? p.startdate.split('T')[0] : '',
+      enddate:     p.enddate   ? p.enddate.split('T')[0]   : '',
+      active:      p.active,
+    });
     setShowModal(true);
   }
 
@@ -88,80 +97,88 @@ export default function PrescriptionManager() {
     <div>
       <div className="page-header">
         <div className="page-header-text">
-          <h2>Prescriptions <span className="count-badge">{prescriptions.length}</span></h2>
+          <h2>
+            <IconClipboard size={20} style={{ color: '#3b82f6' }} />
+            Prescriptions
+            <span className="count-badge">{prescriptions.length}</span>
+          </h2>
           <p>Link prescriptions to diseases and track treatment regimens</p>
         </div>
         <button className="btn btn-primary" onClick={openAdd}>
-          <IconPlus size={15} /> Add Prescription
+          <IconPlus size={14} /> Add Prescription
         </button>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
 
-      <div className="card" style={{ padding: 0 }}>
-        {prescriptions.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon"><IconClipboard size={34} /></div>
+      {prescriptions.length === 0 ? (
+        <div className="card">
+          <div className="empty-state" style={{ padding: '52px 24px' }}>
+            <div className="empty-icon" style={{ width: 72, height: 72, background: 'var(--primary-50)', color: 'var(--primary)' }}>
+              <IconClipboard size={32} />
+            </div>
             <h3>No prescriptions yet</h3>
-            <p>Add diseases first, then create prescriptions linked to them.</p>
+            <p>Add a disease first, then create prescriptions linked to doctor visits.</p>
+            <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={openAdd}>
+              <IconPlus size={14} /> Add first prescription
+            </button>
           </div>
-        ) : (
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th><IconUser size={13} style={{ verticalAlign: 'middle' }} /> Patient</th>
-                  <th>Disease</th>
-                  <th>Doctor Note</th>
-                  <th><IconCalendar size={13} style={{ verticalAlign: 'middle' }} /> Start</th>
-                  <th><IconCalendar size={13} style={{ verticalAlign: 'middle' }} /> End</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {prescriptions.map(p => (
-                  <tr key={p.$id}>
-                    <td>
-                      <div className="patient-cell">
-                        <div className="patient-avatar">{initials(p.patientname)}</div>
-                        <span className="patient-name">{p.patientname}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="badge badge-blue" style={{ fontSize: 12 }}>
-                        {diseaseLabel(p.diseaseid)}
-                      </span>
-                    </td>
-                    <td className="td-muted" style={{ maxWidth: 200 }}>
-                      {p.doctornote
-                        ? <span title={p.doctornote}>{p.doctornote.length > 45 ? p.doctornote.slice(0,45) + '…' : p.doctornote}</span>
-                        : <span style={{ color: 'var(--gray-300)' }}>—</span>}
-                    </td>
-                    <td className="td-muted" style={{ whiteSpace: 'nowrap' }}>{fmtDate(p.startdate)}</td>
-                    <td className="td-muted" style={{ whiteSpace: 'nowrap' }}>{fmtDate(p.enddate)}</td>
-                    <td>
-                      <span className={`badge ${p.active ? 'badge-green' : 'badge-gray'}`}>
-                        {p.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-ghost btn-icon edit" title="Edit" onClick={() => openEdit(p)}>
-                          <IconEdit size={15} />
-                        </button>
-                        <button className="btn btn-ghost btn-icon danger" title="Delete" onClick={() => handleDelete(p.$id)}>
-                          <IconTrash size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="prx-grid">
+          {prescriptions.map(p => (
+            <div key={p.$id} className={`prx-card${!p.active ? ' prx-card-inactive' : ''}`}>
+              {/* Header */}
+              <div className="prx-card-header">
+                <div className="patient-cell" style={{ flex: 1, minWidth: 0 }}>
+                  <div className="patient-avatar">{initials(p.patientname)}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="prx-patient-name">{p.patientname}</div>
+                    <div className="prx-disease-tag">
+                      <IconVirus size={10} />
+                      {diseaseLabel(p.diseaseid)}
+                    </div>
+                  </div>
+                </div>
+                <span className={`badge ${p.active ? 'badge-green' : 'badge-gray'}`}>
+                  {p.active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+
+              {/* Body */}
+              <div className="prx-card-body">
+                {p.doctornote ? (
+                  <div className="prx-note">
+                    <span className="prx-note-icon">📋</span>
+                    <span>{p.doctornote.length > 100 ? p.doctornote.slice(0, 100) + '…' : p.doctornote}</span>
+                  </div>
+                ) : (
+                  <div className="prx-note prx-note-empty">No doctor note added</div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="prx-card-footer">
+                <div className="prx-dates">
+                  <IconCalendar size={11} style={{ flexShrink: 0 }} />
+                  <span>
+                    {fmtDate(p.startdate) || 'No start'}
+                    {fmtDate(p.enddate) ? ` → ${fmtDate(p.enddate)}` : ''}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button className="btn btn-ghost btn-icon edit" title="Edit" onClick={() => openEdit(p)}>
+                    <IconEdit size={14} />
+                  </button>
+                  <button className="btn btn-ghost btn-icon danger" title="Delete" onClick={() => handleDelete(p.$id)}>
+                    <IconTrash size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showModal && (
         <Modal title={editing ? 'Edit Prescription' : 'Add Prescription'} onClose={() => setShowModal(false)}>
