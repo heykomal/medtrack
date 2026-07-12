@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getDiseases, createDisease, updateDisease, deleteDisease } from '../services/api.js';
 import { useToast } from '../components/Toast.jsx';
 import Modal from '../components/Modal.jsx';
@@ -32,15 +33,17 @@ function avatarColor(name) {
 }
 
 export default function DiseaseManager() {
-  const [diseases, setDiseases]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing]     = useState(null);
-  const [form, setForm]           = useState(EMPTY);
-  const [saving, setSaving]       = useState(false);
-  const [statusFilter, setStatusFilter] = useState('');
-  const toast = useToast();
+  const [diseases,      setDiseases]      = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState('');
+  const [showModal,     setShowModal]     = useState(false);
+  const [editing,       setEditing]       = useState(null);
+  const [form,          setForm]          = useState(EMPTY);
+  const [saving,        setSaving]        = useState(false);
+  const [statusFilter,  setStatusFilter]  = useState('');
+
+  const toast    = useToast();
+  const navigate = useNavigate();
 
   async function load() {
     try {
@@ -200,6 +203,16 @@ export default function DiseaseManager() {
                     {fmtDate(d.diagnoseDate) || 'No date recorded'}
                   </div>
                   <div className="disease-actions">
+                    {/* View Prescriptions link */}
+                    <button
+                      className="btn-link-green"
+                      onClick={() => navigate('/prescriptions', {
+                        state: { filterDisease: d.$id, diseaseName: d.diseasename },
+                      })}
+                      title="View prescriptions for this disease"
+                    >
+                      View Prescriptions →
+                    </button>
                     <button className="btn btn-ghost btn-icon edit" title="Edit" onClick={() => openEdit(d)}>
                       <IconEdit size={14} />
                     </button>

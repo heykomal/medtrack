@@ -14,10 +14,15 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Attach the requesting user's email to every request for data-isolation filtering
+app.use((req, res, next) => {
+  req.userEmail = (req.headers['x-user-email'] || '').trim().toLowerCase();
+  next();
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'medtrack-backend', timestamp: new Date().toISOString() });
 });
-
 
 app.get('/test-appwrite', async (req, res) => {
   try {
@@ -28,12 +33,12 @@ app.get('/test-appwrite', async (req, res) => {
   }
 });
 
-app.use('/api/auth',     authRoutes);
-app.use('/api/admin',   adminRoutes);
-app.use('/api/diseases', diseaseRoutes);
+app.use('/api/auth',          authRoutes);
+app.use('/api/admin',         adminRoutes);
+app.use('/api/diseases',      diseaseRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
-app.use('/api/medicines', medicineRoutes);
-app.use('/api/dose-logs', doseLogRoutes);
+app.use('/api/medicines',     medicineRoutes);
+app.use('/api/dose-logs',     doseLogRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

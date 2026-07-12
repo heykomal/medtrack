@@ -4,7 +4,7 @@ const ThemeCtx = createContext(null);
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(
-    () => localStorage.getItem('medtrack-theme') || 'light'
+    () => localStorage.getItem('medtrack-theme') || 'dark'
   );
 
   useEffect(() => {
@@ -12,7 +12,7 @@ export function ThemeProvider({ children }) {
     localStorage.setItem('medtrack-theme', theme);
   }, [theme]);
 
-  const toggle = () => setTheme(t => (t === 'light' ? 'dark' : 'light'));
+  const toggle = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
 
   return (
     <ThemeCtx.Provider value={{ theme, toggle }}>

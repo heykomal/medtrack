@@ -4,6 +4,18 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const api = axios.create({ baseURL: BASE_URL });
 
+// Inject the logged-in user's email into every request for server-side data isolation
+api.interceptors.request.use(config => {
+  try {
+    const stored = localStorage.getItem('medtrack-user');
+    if (stored) {
+      const user = JSON.parse(stored);
+      if (user?.email) config.headers['X-User-Email'] = user.email.trim().toLowerCase();
+    }
+  } catch { /* ignore parse errors */ }
+  return config;
+});
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const authRegister = (email, password) => api.post('/api/auth/register', { email, password }).then(r => r.data);
 export const authLogin    = (email, password) => api.post('/api/auth/login',    { email, password }).then(r => r.data);

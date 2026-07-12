@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   getPrescriptions, createPrescription, updatePrescription, deletePrescription, getDiseases,
 } from '../services/api.js';
@@ -20,14 +21,22 @@ function initials(name) {
 
 export default function PrescriptionManager() {
   const [prescriptions, setPrescriptions] = useState([]);
-  const [diseases, setDiseases]           = useState([]);
-  const [loading, setLoading]             = useState(true);
-  const [error, setError]                 = useState('');
-  const [showModal, setShowModal]         = useState(false);
-  const [editing, setEditing]             = useState(null);
-  const [form, setForm]                   = useState(EMPTY);
-  const [saving, setSaving]               = useState(false);
-  const toast = useToast();
+  const [diseases,      setDiseases]      = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState('');
+  const [showModal,     setShowModal]     = useState(false);
+  const [editing,       setEditing]       = useState(null);
+  const [form,          setForm]          = useState(EMPTY);
+  const [saving,        setSaving]        = useState(false);
+
+  const toast    = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Read inbound filter from DiseaseManager navigation
+  const inboundFilter   = location.state?.filterDisease  || '';
+  const inboundDiseaseN = location.state?.diseaseName    || '';
+  const [diseaseFilter, setDiseaseFilter] = useState(inboundFilter);
 
   async function load() {
     try {
@@ -42,10 +51,6 @@ export default function PrescriptionManager() {
   function diseaseLabel(id) {
     const d = diseases.find(d => d.$id === id);
     return d ? d.diseasename : '—';
-  }
-  function diseasePatient(id) {
-    const d = diseases.find(d => d.$id === id);
-    return d ? d.patientname : '';
   }
 
   function openAdd()  { setEditing(null); setForm(EMPTY); setShowModal(true); }
@@ -91,6 +96,10 @@ export default function PrescriptionManager() {
 
   const set = f => e => setForm(prev => ({ ...prev, [f]: e.target.value }));
 
+  const displayed = diseaseFilter
+    ? prescriptions.filter(p => p.diseaseid === diseaseFilter)
+    : prescriptions;
+
   if (loading) return <div className="spinner-wrap"><div className="spinner" /></div>;
 
   return (
@@ -111,14 +120,60 @@ export default function PrescriptionManager() {
 
       {error && <div className="alert alert-error">{error}</div>}
 
-      {prescriptions.length === 0 ? (
+      {/* Active disease filter banner */}
+      {diseaseFilter && (
+        <div className="filter-banner">
+          <IconVirus size={14} style={{ color: 'var(--green)' }} />
+          <span>Filtered by: <strong>{inboundDiseaseN || diseaseLabel(diseaseFilter)}</strong></span>
+          <button
+            className="filter-banner-clear"
+            onClick={() => setDiseaseFilter('')}
+          >
+            Clear filter ×
+          </button>
+        </div>
+      )}
+
+      {/* Disease filter chips (shown when not arriving from a disease link) */}
+      {!diseaseFilter && diseases.length > 0 && prescriptions.length > 0 && (
+        <div className="page-filters">
+          <div className="filter-chip-row">
+            <button
+              className={`filter-chip${!diseaseFilter ? ' active' : ''}`}
+              onClick={() => setDiseaseFilter('')}
+            >
+              All
+            </button>
+            {diseases.map(d => {
+              const count = prescriptions.filter(p => p.diseaseid === d.$id).length;
+              if (!count) return null;
+              return (
+                <button
+                  key={d.$id}
+                  className={`filter-chip${diseaseFilter === d.$id ? ' active' : ''}`}
+                  onClick={() => setDiseaseFilter(d.$id)}
+                >
+                  {d.diseasename}
+                  <span className="filter-chip-count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {displayed.length === 0 ? (
         <div className="card">
           <div className="empty-state" style={{ padding: '52px 24px' }}>
             <div className="empty-icon" style={{ width: 72, height: 72, background: 'var(--primary-50)', color: 'var(--primary)' }}>
               <IconClipboard size={32} />
             </div>
-            <h3>No prescriptions yet</h3>
-            <p>Add a disease first, then create prescriptions linked to doctor visits.</p>
+            <h3>{diseaseFilter ? 'No prescriptions for this disease' : 'No prescriptions yet'}</h3>
+            <p>
+              {diseaseFilter
+                ? 'Add a prescription linked to this disease.'
+                : 'Add a disease first, then create prescriptions linked to doctor visits.'}
+            </p>
             <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={openAdd}>
               <IconPlus size={14} /> Add first prescription
             </button>
@@ -126,57 +181,75 @@ export default function PrescriptionManager() {
         </div>
       ) : (
         <div className="prx-grid">
-          {prescriptions.map(p => (
-            <div key={p.$id} className={`prx-card${!p.active ? ' prx-card-inactive' : ''}`}>
-              {/* Header */}
-              <div className="prx-card-header">
-                <div className="patient-cell" style={{ flex: 1, minWidth: 0 }}>
-                  <div className="patient-avatar">{initials(p.patientname)}</div>
-                  <div style={{ minWidth: 0 }}>
-                    <div className="prx-patient-name">{p.patientname}</div>
-                    <div className="prx-disease-tag">
-                      <IconVirus size={10} />
-                      {diseaseLabel(p.diseaseid)}
+          {displayed.map(p => {
+            const dLabel = diseaseLabel(p.diseaseid);
+            return (
+              <div key={p.$id} className={`prx-card${!p.active ? ' prx-card-inactive' : ''}`}>
+
+                {/* Disease tag above card header */}
+                {dLabel !== '—' && (
+                  <div className="prx-disease-banner">
+                    <IconVirus size={11} style={{ flexShrink: 0 }} />
+                    {dLabel}
+                  </div>
+                )}
+
+                {/* Header */}
+                <div className="prx-card-header">
+                  <div className="patient-cell" style={{ flex: 1, minWidth: 0 }}>
+                    <div className="patient-avatar">{initials(p.patientname)}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="prx-patient-name">{p.patientname}</div>
                     </div>
                   </div>
-                </div>
-                <span className={`badge ${p.active ? 'badge-green' : 'badge-gray'}`}>
-                  {p.active ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-
-              {/* Body */}
-              <div className="prx-card-body">
-                {p.doctornote ? (
-                  <div className="prx-note">
-                    <span className="prx-note-icon">📋</span>
-                    <span>{p.doctornote.length > 100 ? p.doctornote.slice(0, 100) + '…' : p.doctornote}</span>
-                  </div>
-                ) : (
-                  <div className="prx-note prx-note-empty">No doctor note added</div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="prx-card-footer">
-                <div className="prx-dates">
-                  <IconCalendar size={11} style={{ flexShrink: 0 }} />
-                  <span>
-                    {fmtDate(p.startdate) || 'No start'}
-                    {fmtDate(p.enddate) ? ` → ${fmtDate(p.enddate)}` : ''}
+                  <span className={`badge ${p.active ? 'badge-green' : 'badge-gray'}`}>
+                    {p.active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <button className="btn btn-ghost btn-icon edit" title="Edit" onClick={() => openEdit(p)}>
-                    <IconEdit size={14} />
-                  </button>
-                  <button className="btn btn-ghost btn-icon danger" title="Delete" onClick={() => handleDelete(p.$id)}>
-                    <IconTrash size={14} />
-                  </button>
+
+                {/* Body */}
+                <div className="prx-card-body">
+                  {p.doctornote ? (
+                    <div className="prx-note">
+                      <span className="prx-note-icon">📋</span>
+                      <span>{p.doctornote.length > 100 ? p.doctornote.slice(0, 100) + '…' : p.doctornote}</span>
+                    </div>
+                  ) : (
+                    <div className="prx-note prx-note-empty">No doctor note added</div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="prx-card-footer">
+                  <div className="prx-dates">
+                    <IconCalendar size={11} style={{ flexShrink: 0 }} />
+                    <span>
+                      {fmtDate(p.startdate) || 'No start'}
+                      {fmtDate(p.enddate) ? ` → ${fmtDate(p.enddate)}` : ''}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {/* View Medicines link */}
+                    <button
+                      className="btn-link-green"
+                      onClick={() => navigate('/medicines', {
+                        state: { filterPrescription: p.$id },
+                      })}
+                      title="View medicines for this prescription"
+                    >
+                      View Medicines →
+                    </button>
+                    <button className="btn btn-ghost btn-icon edit" title="Edit" onClick={() => openEdit(p)}>
+                      <IconEdit size={14} />
+                    </button>
+                    <button className="btn btn-ghost btn-icon danger" title="Delete" onClick={() => handleDelete(p.$id)}>
+                      <IconTrash size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
